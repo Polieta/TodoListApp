@@ -1,0 +1,211 @@
+﻿<Window x:Class="TodoListApp.NotificationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Thông báo"
+        Height="330"
+        Width="410"
+        MinHeight="300"
+        MinWidth="400"
+        Topmost="True"
+        ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        Background="Transparent"
+        AllowsTransparency="True"
+        BorderThickness="0"
+        Loaded="NotificationWindow_Loaded">
+
+    <Window.Effect>
+        <DropShadowEffect BlurRadius="20" ShadowDepth="5" Opacity="0.4" Color="#888"/>
+    </Window.Effect>
+
+    <Window.Resources>
+        <!-- Gradient động cho nền cửa sổ -->
+        <!-- Sử dụng ObjectAnimation để thay đổi Brush hoàn toàn -->
+        <LinearGradientBrush x:Key="AnimatedBackground1" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#FF6B6B" Offset="0"/>
+            <GradientStop Color="#FF8E44" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="AnimatedBackground2" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#9C27B0" Offset="0"/>
+            <GradientStop Color="#2196F3" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="AnimatedBackground3" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#4CAF50" Offset="0"/>
+            <GradientStop Color="#FFEB3B" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- Gradient cho tiêu đề thông báo (giữ nguyên) -->
+        <LinearGradientBrush x:Key="TitleGradient" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#2196F3" Offset="0"/>
+            <GradientStop Color="#21CBF3" Offset="1"/>
+        </LinearGradientBrush>
+
+        <!-- Style cho nút chính -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#2196F3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Margin" Value="8,0"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinWidth" Value="100"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="18"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1976D2"/>
+                                <Setter TargetName="border" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="1.05" ScaleY="1.05"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#0D47A1"/>
+                                <Setter TargetName="border" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Style cho nút phụ -->
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="#F8F9FA"/>
+            <Setter Property="Foreground" Value="#495057"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E9ECEF"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DEE2E6"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Style cho icon lớn -->
+        <Style x:Key="NotificationIcon" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="48"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,15"/>
+            <Setter Property="Foreground" Value="White"/>
+            <!-- Đổi màu icon để nổi bật trên ảnh nền -->
+        </Style>
+
+        <!-- Style cho tiêu đề -->
+        <Style x:Key="TitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Foreground" Value="White"/>
+            <!-- Đổi màu tiêu đề để nổi bật trên ảnh nền -->
+        </Style>
+
+        <!-- Style cho nội dung -->
+        <Style x:Key="MessageStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="White"/>
+            <!-- Đổi màu nội dung để nổi bật trên ảnh nền -->
+            <Setter Property="LineHeight" Value="20"/>
+        </Style>
+    </Window.Resources>
+
+    <!-- Dùng Grid làm container chính -->
+    <Grid>
+        <!-- Hình ảnh nền -->
+        <Image x:Name="BackgroundImage" Source="{Binding BackgroundImagePath, RelativeSource={RelativeSource AncestorType=Window}}" Stretch="UniformToFill" Opacity="0.6"/>
+        <!-- Opacity để văn bản dễ đọc hơn -->
+
+        <!-- Overlay để làm mờ ảnh nền một chút -->
+        <Rectangle Fill="White" Opacity="0.1"/>
+
+        <!-- Border chứa nội dung chính, có nền trong suốt -->
+        <Border x:Name="MainBorder" Background="Transparent" CornerRadius="15" BorderThickness="0" Margin="10">
+            <!-- Thêm margin để tạo viền xung quanh -->
+            <Grid Margin="25">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <!-- Header để di chuyển -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Icon -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Tiêu đề gradient (hoặc đơn giản) -->
+                    <RowDefinition Height="*"/>
+                    <!-- Nội dung (ScrollViewer) -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Dòng phân cách -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Nút hành động -->
+                </Grid.RowDefinitions>
+
+                <!-- Header để di chuyển cửa sổ -->
+                <Grid Grid.Row="0" MouseLeftButtonDown="Header_MouseLeftButtonDown" Background="Transparent" Height="20" VerticalAlignment="Top" Margin="0,-15,0,5"/>
+
+                <!-- Icon thông báo -->
+                <TextBlock x:Name="IconTextBlock"
+                          Text="🔔"
+                          Style="{StaticResource NotificationIcon}"
+                          Grid.Row="1"/>
+
+                <!-- Tiêu đề với gradient -->
+                <Border Grid.Row="2"
+                        Background="{StaticResource TitleGradient}"
+                        CornerRadius="10"
+                        Padding="15,8"
+                        Margin="0,0,0,15">
+                    <TextBlock x:Name="TitleTextBlock"
+                              Text="THÔNG BÁO QUAN TRỌNG"
+                              Style="{StaticResource TitleStyle}"
+                              FontSize="16"/>
+                </Border>
+
+                <!-- Nội dung thông báo -->
+                <ScrollViewer Grid.Row="3"
+                             VerticalScrollBarVisibility="Auto"
+                             Margin="0,0,0,20">
+                    <TextBlock x:Name="MessageTextBlock"
+                              Text="Nội dung thông báo sẽ hiển thị ở đây..."
+                              Style="{StaticResource MessageStyle}"/>
+                </ScrollViewer>
+
+                <!-- Dòng phân cách -->
+                <Border Grid.Row="4"
+                        BorderBrush="#EEE"
+                        BorderThickness="0,1,0,0"
+                        Margin="0,0,0,15"/>
+
+                <!-- Nút hành động -->
+                <StackPanel Grid.Row="5"
+                           Orientation="Horizontal"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Bottom">
+                    <Button Content="⏰ Từ từ"
+                        Style="{StaticResource SecondaryButton}"
+                            Click="PostponeButton_Click"/>
+                    <Button Content="✅ Chuyển trạng thái"
+                            Style="{StaticResource PrimaryButton}"
+                            Click="CompleteTaskButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

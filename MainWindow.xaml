@@ -1,0 +1,432 @@
+﻿<Window x:Class="TodoListApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:TodoListApp"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
+        Title="Todo Kanban Board" Height="700" Width="1200"
+        MinHeight="600" MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        Loaded="Window_Loaded">
+
+    <Window.Resources>
+        <ContextMenu x:Shared="false" x:Key="SysTrayMenu">
+            <MenuItem Header="Mở Ứng Dụng" Click="ShowMainWindow_Click"/>
+            <Separator />
+            <MenuItem Header="Kiểm tra cập nhật" Click="CheckForUpdates_Click"/>
+            <Separator />
+            <MenuItem Header="Thoát" Click="ExitApplication_Click"/>
+        </ContextMenu>
+
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <Style x:Key="InputBorder" TargetType="Border">
+            <Setter Property="BorderBrush" Value="Black"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Margin" Value="0,4,0,8"/>
+        </Style>
+
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#FF2196F3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Black"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#FF1976D2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#FF0D47A1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TaskCard" TargetType="Border">
+            <Style.Resources>
+                <SolidColorBrush x:Key="HoverBackground" Color="#F5F5F5"/>
+                <SolidColorBrush x:Key="DefaultText" Color="#FF666666"/>
+                <SolidColorBrush x:Key="HoverText" Color="#007ACC"/>
+                <SolidColorBrush x:Key="PriorityLowBackground" Color="#E8F5E8"/>
+                <SolidColorBrush x:Key="PriorityMediumBackground" Color="#FFF3E0"/>
+                <SolidColorBrush x:Key="PriorityHighBackground" Color="#FFEBEE"/>
+            </Style.Resources>
+
+            <Style.Setters>
+                <Setter Property="Background" Value="{DynamicResource WindowBackground}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="Margin" Value="0,0,0,10"/>
+                <Setter Property="Padding" Value="12"/>
+                <Setter Property="VerticalAlignment" Value="Top"/>
+                <Setter Property="MaxHeight" Value="60"/>
+                <EventSetter Event="MouseEnter" Handler="TaskCard_MouseEnter"/>
+                <EventSetter Event="MouseLeave" Handler="TaskCard_MouseLeave"/>
+            </Style.Setters>
+
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource HoverBackground}"/>
+                    <Setter Property="BorderBrush" Value="#FF9E9E9E"/>
+                    <Setter Property="Padding" Value="14"/>
+                    <Setter Property="MaxHeight" Value="300"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding Priority}" Value="0">
+                    <Setter Property="Background" Value="{DynamicResource PriorityLowBackground}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Priority}" Value="1">
+                    <Setter Property="Background" Value="{DynamicResource PriorityMediumBackground}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Priority}" Value="2">
+                    <Setter Property="Background" Value="{DynamicResource PriorityHighBackground}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="KanbanColumn" TargetType="Border">
+            <Setter Property="Background" Value="#FFF8F9FA"/>
+            <Setter Property="BorderBrush" Value="Black"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="15"/>
+            <Setter Property="Margin" Value="10"/>
+        </Style>
+        <Style x:Key="ColumnHeader" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Foreground" Value="{DynamicResource HeaderTextBrush}"/>
+        </Style>
+
+        <DataTemplate x:Key="TaskCardTemplate">
+            <Border Style="{StaticResource TaskCard}"
+                    PreviewMouseDown="TaskCard_PreviewMouseDown"
+                    MouseMove="TaskCard_MouseMove"
+                    Tag="{Binding}">
+                <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14"
+                               Foreground="{DynamicResource TaskTitleBrush}" TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,2">
+                        <TextBlock Text="⏰ Deadline: " FontSize="11" Foreground="{DynamicResource NormalTextBrush}"/>
+                        <TextBlock Text="{Binding FormattedDeadline}" FontSize="11"
+                                   Foreground="{DynamicResource TaskDeadlineBrush}" FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="DetailedInfoPanel" Orientation="Vertical" Margin="0,6,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Border}}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto" Visibility="{Binding Visibility, ElementName=DetailedInfoPanel}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Description}" FontSize="12"
+                                           Foreground="{DynamicResource TaskDescriptionBrush}"
+                                           TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                    <TextBlock Text="⚠️ Ưu tiên: " FontSize="11" Foreground="{DynamicResource NormalTextBrush}"/>
+                                    <TextBlock Text="{Binding PriorityText}" FontSize="11"
+                                               Foreground="{DynamicResource TaskPriorityBrush}" FontWeight="Bold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Priority}" Value="0">
+                                                        <Setter Property="Foreground" Value="#4CAF50"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Priority}" Value="1">
+                                                        <Setter Property="Foreground" Value="#FF9800"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Priority}" Value="2">
+                                                        <Setter Property="Foreground" Value="#F44336"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2" Visibility="{Binding ReminderEnabled, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="🔔 Nhắc nhở: " FontSize="11" Foreground="{DynamicResource NormalTextBrush}"/>
+                                    <TextBlock Text="{Binding FormattedReminderTime}" FontSize="11" Foreground="Blue" FontWeight="Bold" Tag="Number"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2" Visibility="{Binding IsRepeating, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="🔁 Lặp: " FontSize="11" Foreground="{DynamicResource NormalTextBrush}"/>
+                                    <TextBlock Text="{Binding RepeatFrequencyText}" FontSize="11" Foreground="Purple" FontWeight="Bold"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                        <Button Content="✏️" Width="28" Height="28" Background="Transparent" BorderThickness="1" BorderBrush="Black" Click="EditTask_Click" Tag="{Binding}" Margin="0,0,4,0"/>
+                        <Button Content="🗑️" Width="28" Height="28" Background="Transparent" BorderThickness="1" BorderBrush="Black" Click="DeleteTask_Click" Tag="{Binding}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#FF2196F3" Padding="14" BorderBrush="Black" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="📋 Nhắc nhở 📋" FontSize="24" FontWeight="Bold"
+                           Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                <Button Grid.Column="1" Content="📊 Thống kê" Margin="0,0,10,0"
+                        Style="{StaticResource ModernButton}" Width="110" Height="36" Click="ShowStatistics_Click"/>
+                <Button Grid.Column="2" Content="⚙️" Width="40" Height="40" Margin="6,0,0,0"
+                        Style="{StaticResource ModernButton}" Click="ShowSettings_Click"/>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="25*"/>
+                <ColumnDefinition Width="75*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="#F5F5F5" Padding="16" BorderBrush="Black" BorderThickness="1">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="➕ Thêm công việc mới" FontSize="16" FontWeight="Bold" Margin="0,0,0,15"/>
+                        <TextBlock Text="Tiêu đề" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <Border Style="{StaticResource InputBorder}">
+                            <TextBox x:Name="TitleTextBox" Background="White" BorderThickness="0"
+                                     VerticalContentAlignment="Center" FontSize="13" />
+                        </Border>
+                        <TextBlock Text="Mô tả" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                        <Border Style="{StaticResource InputBorder}">
+                            <TextBox x:Name="DescriptionTextBox" Background="White" BorderThickness="0"
+                                     AcceptsReturn="True" TextWrapping="Wrap" Height="70" FontSize="13"/>
+                        </Border>
+                        <TextBlock Text="Deadline" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                        <Border Style="{StaticResource InputBorder}">
+                            <Grid>
+                                <TextBox x:Name="DeadlineTextBox" Background="White" BorderThickness="0"
+                                         VerticalContentAlignment="Center" FontSize="13" MaxLength="10"
+                                         PreviewTextInput="DateTextBox_PreviewTextInput"
+                                         TextChanged="DateTextBox_TextChanged"/>
+                                <Button Content="📅" Width="24" Height="24" Background="Transparent" BorderThickness="0"
+                                        HorizontalAlignment="Right" VerticalAlignment="Center" Click="ShowCalendar_Click"
+                                        Margin="0,0,4,0"/>
+                            </Grid>
+                        </Border>
+                        <TextBlock Text="Thời gian" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                        <Border Style="{StaticResource InputBorder}">
+                            <TextBox x:Name="TimeTextBox" Background="White" BorderThickness="0"
+                                     VerticalContentAlignment="Center" FontSize="13" MaxLength="5"
+                                     PreviewTextInput="TimeTextBox_PreviewTextInput"
+                                     TextChanged="TimeTextBox_TextChanged"/>
+                        </Border>
+                        <CheckBox x:Name="EnableReminderCheckBox" Content="Bật nhắc nhở" FontWeight="SemiBold" Margin="0,8,0,4" IsChecked="True"/>
+                        <TextBlock Text="Nhắc nhở trước Deadline" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                        <ComboBox x:Name="ReminderOffsetComboBox"
+                                  Background="White"
+                                  BorderBrush="Black"
+                                  BorderThickness="1"
+                                  Padding="4"
+                                  Margin="0,4,0,8"
+                                  VerticalContentAlignment="Center"
+                                  FontSize="13"
+                                  SelectedIndex="0">
+                            <ComboBoxItem Content="5 phút trước" Tag="5" />
+                            <ComboBoxItem Content="10 phút trước" Tag="10" />
+                            <ComboBoxItem Content="15 phút trước" Tag="15" />
+                            <ComboBoxItem Content="20 phút trước" Tag="20" />
+                        </ComboBox>
+                        <Grid Margin="0,8,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <!-- Checkbox -->
+                                <ColumnDefinition Width="*"/>
+                                <!-- Label -->
+                            </Grid.ColumnDefinitions>
+                            <CheckBox x:Name="RepeatTaskCheckBox"
+                                      Grid.Column="0"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,8,0"/>
+                            <TextBlock Text="Lặp lại task"
+                                       Grid.Column="1"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                        <ComboBox x:Name="RepeatFrequencyComboBox"
+                                  Background="White"
+                                  BorderBrush="Black"
+                                  BorderThickness="1"
+                                  Padding="4"
+                                  Margin="0,0,0,8"
+                            VerticalContentAlignment="Center"
+                                  FontSize="13"
+                                  SelectedIndex="-1"
+                                  IsEnabled="{Binding IsChecked, ElementName=RepeatTaskCheckBox}">
+                            <ComboBoxItem Content="Hàng ngày"/>
+                            <ComboBoxItem Content="Hàng tuần"/>
+                            <ComboBoxItem Content="Hàng tháng"/>
+                        </ComboBox>
+                        <TextBlock Text="Ưu tiên" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                        <Border Style="{StaticResource InputBorder}">
+                            <Grid>
+                                <TextBox x:Name="PriorityTextBox" Background="White" BorderThickness="0"
+                                         VerticalContentAlignment="Center" FontSize="13" IsReadOnly="True"/>
+                                <Button Content="🔽" Width="24" Height="24" Background="Transparent" BorderThickness="0"
+                                        HorizontalAlignment="Right" VerticalAlignment="Center" Click="ShowPriorityPopup_Click"
+                                        Margin="0,0,4,0"/>
+                            </Grid>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                            <Button Content="➕ Thêm" Style="{StaticResource ModernButton}" Height="38" Width="110" Click="AddTask_Click"/>
+                            <Button Content="📅 Lịch công việc" Height="38" Width="120" Margin="12,0,0,0"    Click="ShowTaskCalendar_Click" Style="{StaticResource ModernButton}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <Grid Grid.Column="1" Margin="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Margin="10,0,0,10" VerticalAlignment="Center">
+                    <Border Style="{StaticResource InputBorder}" Width="200" Height="36">
+                        <TextBox x:Name="SearchTextBox" Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" FontSize="13" Foreground="{DynamicResource NormalTextBrush}" />
+                    </Border>
+                    <Button Content="🔍 Tìm kiếm" Style="{StaticResource ModernButton}" Height="36" Margin="8,0,0,0" Click="SearchTask_Click"/>
+                </StackPanel>
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Style="{StaticResource KanbanColumn}"
+                            AllowDrop="True" Drop="Column_Drop" DragOver="Column_DragOver" Tag="InProgress">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="📅 CHƯA XONG" Style="{StaticResource ColumnHeader}" Foreground="#FFFF9800"/>
+                            <TextBlock Grid.Row="1" x:Name="InProgressCountText" Text="0 tasks" HorizontalAlignment="Center"
+                                       FontSize="12" Foreground="#FF666666" Margin="0,0,0,10"/>
+                            <Grid Grid.Row="2">
+                                <ListBox x:Name="InProgressTasksList"
+                                         ItemTemplate="{StaticResource TaskCardTemplate}"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         Background="Transparent" BorderThickness="0">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical"/>
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                </ListBox>
+                                <TextBlock x:Name="NoInProgressTasksText"
+                                           Text="🗂️ Không có task nào"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="#888"
+                                           FontStyle="Italic"
+                                           Visibility="Collapsed"/>
+                            </Grid>
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="8,8,8,0">
+                                <Button x:Name="PrevInProgressBtn" Content="◀ Trước" Width="80" Height="30"
+                                        Margin="0,0,8,0" Click="PrevPage_Click" Visibility="Collapsed"/>
+                                <TextBlock x:Name="InProgressPageText" Text="Trang 1" VerticalAlignment="Center"
+                                           Margin="0,0,8,0" Foreground="#FF333333"/>
+                                <Button x:Name="NextInProgressBtn" Content="Sau ▶" Width="80" Height="30"
+                                        Click="NextPage_Click" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource KanbanColumn}"
+                            AllowDrop="True" Drop="Column_Drop" DragOver="Column_DragOver" Tag="Completed">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="✅ HOÀN THÀNH" Style="{StaticResource ColumnHeader}" Foreground="#FF4CAF50"/>
+                            <TextBlock Grid.Row="1" x:Name="CompletedCountText" Text="0 tasks" HorizontalAlignment="Center"
+                                       FontSize="12" Foreground="#FF666666" Margin="0,0,0,10"/>
+                            <Grid Grid.Row="2">
+                                <ListBox x:Name="CompletedTasksList"
+                                         ItemTemplate="{StaticResource TaskCardTemplate}"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                         Background="Transparent" BorderThickness="0">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical"/>
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                </ListBox>
+                                <TextBlock x:Name="NoCompletedTasksText"
+                                           Text="🗂️ Không có task nào"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="#888"
+                                           FontStyle="Italic"
+                                           Visibility="Collapsed"/>
+                            </Grid>
+                            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="8,8,8,0">
+                                <Button x:Name="PrevCompletedBtn" Content="◀ Trước" Width="80" Height="30"
+                                        Margin="0,0,8,0" Click="PrevPage_Click" Visibility="Collapsed"/>
+                                <TextBlock x:Name="CompletedPageText" Text="Trang 1" VerticalAlignment="Center"
+                                           Margin="0,0,8,0" Foreground="#FF333333"/>
+                                <Button x:Name="NextCompletedBtn" Content="Sau ▶" Width="80" Height="30"
+                                        Click="NextPage_Click" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <StatusBar Grid.Row="2" Background="{DynamicResource StatusBackground}" BorderBrush="Black" BorderThickness="0,1,0,0" Height="30">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" Foreground="{DynamicResource StatusForeground}" Text="Sẵn sàng"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock x:Name="ReminderStatusText" Foreground="{DynamicResource StatusForeground}" Text="🔔 0 nhắc nhở sắp tới"/>
+            </StatusBarItem>
+        </StatusBar>
+        <tb:TaskbarIcon x:Name="MyNotifyIcon" Visibility="Visible" ToolTipText="TodoList App (Đang chạy nền)" IconSource="pack://application:,,,/Icons/app_icon.ico" ContextMenu="{StaticResource SysTrayMenu}" />
+    </Grid>
+</Window>

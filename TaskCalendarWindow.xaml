@@ -1,0 +1,186 @@
+﻿<Window x:Class="TodoListApp.TaskCalendarWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:TodoListApp"
+        Title="📅 Lịch công việc" Height="700" Width="900"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <!-- Template cho tiêu đề các ngày trong tuần -->
+        <DataTemplate x:Key="DayHeaderTemplate">
+            <TextBlock Text="{Binding}" 
+                       FontSize="12" 
+                       FontWeight="SemiBold" 
+                       HorizontalAlignment="Center" 
+                       VerticalAlignment="Center" 
+                       Padding="5"/>
+        </DataTemplate>
+
+        <!-- Template cho từng ô ngày trong lịch -->
+        <DataTemplate x:Key="CalendarDayTemplate">
+            <Border BorderBrush="LightGray" 
+                    BorderThickness="1" 
+                    Padding="3"
+                    MouseDown="CalendarDay_MouseDoubleClick"
+                    Background="White">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsToday}" Value="True">
+                                <Setter Property="Background" Value="LightBlue"/>
+                            </DataTrigger>
+                            <!-- Thêm DataTrigger khác để xử lý ô trống nếu cần, ví dụ: -->
+                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                <Setter Property="Background" Value="LightGray"/>
+                                <!-- Có thể thêm các Setter khác để làm mờ hoặc thay đổi ô trống -->
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- Ngày -->
+                        <RowDefinition Height="*"/>
+                        <!-- Task Indicators -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Số ngày -->
+                    <TextBlock Grid.Row="0" Text="{Binding Day}" 
+                               FontSize="14" 
+                               FontWeight="Bold"
+                               HorizontalAlignment="Left">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="Black"/>
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsToday}" Value="True">
+                                        <Setter Property="Foreground" Value="Red"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <!-- Số lượng task -->
+                    <TextBlock Grid.Row="0" Text="{Binding TaskCount, StringFormat='({0})'}"
+                               FontSize="10"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Top"
+                               Foreground="Gray"
+                               Margin="0,2,2,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <!-- Danh sách các indicator cho task (Rectangle nhỏ) -->
+                    <ItemsControl Grid.Row="1" ItemsSource="{Binding Tasks}">
+                        <ItemsControl.Style>
+                            <Style TargetType="ItemsControl">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <!-- Hoặc ẩn nếu không có task -->
+                                    <DataTrigger Binding="{Binding TaskCount}" Value="0">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ItemsControl.Style>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Rectangle Width="6" Height="6" Margin="1">
+                                    <!-- Thay vì Fill="{Binding Priority, Converter={StaticResource PriorityToColorConverter}}", dùng Style với DataTrigger -->
+                                    <Rectangle.Style>
+                                        <Style TargetType="Rectangle">
+                                            <Setter Property="Fill" Value="Gray"/>
+                                            <!-- Giá trị mặc định -->
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Priority}" Value="0">
+                                                    <Setter Property="Fill" Value="Green"/>
+                                                    <!-- Thấp -->
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Priority}" Value="1">
+                                                    <Setter Property="Fill" Value="Orange"/>
+                                                    <!-- Trung bình -->
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Priority}" Value="2">
+                                                    <Setter Property="Fill" Value="Red"/>
+                                                    <!-- Cao -->
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Rectangle.Style>
+                                </Rectangle>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- Xóa local:PriorityToColorConverter khỏi Resources -->
+        <!-- <local:PriorityToColorConverter x:Key="PriorityToColorConverter"/> -->
+    </Window.Resources>
+
+    <!-- Nội dung còn lại của Grid giữ nguyên... -->
+    <Grid Margin="10">
+        <!-- Header -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,15">
+            <TextBlock Text="THÁNG " FontWeight="Bold" FontSize="18"/>
+            <TextBlock x:Name="MonthYearText" FontWeight="Bold" FontSize="18"/>
+            <ComboBox x:Name="MonthComboBox" ItemsSource="{Binding Months}" SelectedItem="{Binding CurrentMonth}" 
+                      SelectionChanged="MonthComboBox_SelectionChanged" Margin="10,0,0,0" Width="80"/>
+            <ComboBox x:Name="YearComboBox" ItemsSource="{Binding Years}" SelectedItem="{Binding CurrentYear}"
+                      SelectionChanged="YearComboBox_SelectionChanged" Width="80" Margin="10,0,0,0"/>
+            <Button Content="XEM" Click="RefreshCalendar_Click" Margin="10,0,0,0"/>
+        </StackPanel>
+
+        <!-- Calendar Grid -->
+        <Border BorderBrush="Black" BorderThickness="1" CornerRadius="4" Background="White">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Days of week header -->
+                <ItemsControl Grid.Row="0" ItemsSource="{Binding DaysOfWeek}" ItemTemplate="{StaticResource DayHeaderTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="7"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+
+                <!-- Calendar days -->
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding CalendarDays}" ItemTemplate="{StaticResource CalendarDayTemplate}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="7"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+	<channel>
+		<title>TodoList App Updates</title>
+		<link>https://github.com/Polieta/TodoListApp/releases</link>
+		<description>Cập nhật cho TodoList App.</description>
+		<language>vi</language>
+		<item>
+			<title>Phiên bản 1.0.0</title>
+			<sparkle:releaseNotesLink>https://raw.githubusercontent.com/Polieta/TodoListApp/main/ReleaseNotes.md</sparkle:releaseNotesLink>
+			<pubDate>Tue, 21 Oct 2025 16:18:00 +0700</pubDate>
+			<enclosure
+				url="https://github.com/Polieta/TodoListApp/releases/download/v1.0.0/TodoListApp.exe"
+				sparkle:version="1.0.0.0"
+				sparkle:shortVersionString="1.0.0"
+				length="1234567"
+				type="application/octet-stream" />
+		</item>
+	</channel>
+</rss>

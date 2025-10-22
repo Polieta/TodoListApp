@@ -1,0 +1,43 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Màu nền -->
+    <SolidColorBrush x:Key="WindowBackground" Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="HeaderTextBrush" Color="White"/>
+    <SolidColorBrush x:Key="NormalTextBrush" Color="#CCCCCC"/>
+    <SolidColorBrush x:Key="ButtonBackground" Color="#007ACC"/>
+    <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#555555"/>
+    <SolidColorBrush x:Key="ColumnBackground" Color="#2D2D30"/>
+    <SolidColorBrush x:Key="StatusBackground" Color="#1F1F1F"/>
+    <SolidColorBrush x:Key="StatusForeground" Color="White"/>
+    
+    <!-- Màu chữ theo ưu tiên -->
+    <SolidColorBrush x:Key="PriorityLowTextBrush" Color="Black"/> <!-- Xanh lá đậm → chữ đen -->
+    <SolidColorBrush x:Key="PriorityMediumTextBrush" Color="Black"/> <!-- Cam → chữ đen -->
+    <SolidColorBrush x:Key="PriorityHighTextBrush" Color="White"/> <!-- Đỏ → chữ trắng -->
+    
+    <!-- Màu ưu tiên -->
+    <SolidColorBrush x:Key="PriorityLowBackground" Color="#2E7D32"/>
+    <!-- Xanh lá đậm -->
+    <SolidColorBrush x:Key="PriorityMediumBackground" Color="#FF9800"/>
+    <!-- Cam -->
+    <SolidColorBrush x:Key="PriorityHighBackground" Color="#D32F2F"/>
+    <!-- Đỏ -->
+
+    <!-- TextBlock trong task card -->
+    <SolidColorBrush x:Key="TaskTitleBrush" Color="White"/>
+    <SolidColorBrush x:Key="TaskDescriptionBrush" Color="#B0BEC5"/>
+    <SolidColorBrush x:Key="TaskDeadlineBrush" Color="White"/>
+    <SolidColorBrush x:Key="TaskPriorityBrush" Color="White"/>
+
+    <!-- Header Kanban -->
+    <SolidColorBrush x:Key="InProgressHeaderBrush" Color="Orange"/>
+    <SolidColorBrush x:Key="CompletedHeaderBrush" Color="LimeGreen"/>
+
+    <!-- Border & Button -->
+    <SolidColorBrush x:Key="BorderBrush" Color="#444444"/>
+    <SolidColorBrush x:Key="HoverBackground" Color="#333333"/>
+    <SolidColorBrush x:Key="HoverText" Color="#007ACC"/>
+
+</ResourceDictionary>

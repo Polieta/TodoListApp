@@ -1,0 +1,127 @@
+﻿<Window x:Class="TodoListApp.StatisticsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:lc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+        mc:Ignorable="d"
+        Title="📊 Thống kê Công việc" Height="650" Width="950"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <!-- Dòng cho ghi chú chung -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Tiêu đề chính -->
+        <TextBlock Text="📊 Thống kê Công việc" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+
+        <!-- Ghi chú chung -->
+        <TextBlock Grid.Row="1" Text="Thống kê dựa trên tất cả các task (Chưa xong &amp; Hoàn thành)." 
+                   FontSize="12" FontStyle="Italic" HorizontalAlignment="Center" Margin="0,0,0,10" Foreground="Gray"/>
+
+        <!-- TabControl chứa các biểu đồ -->
+        <TabControl Grid.Row="2">
+
+            <!-- Tab Biểu đồ Cột -->
+            <TabItem Header="📈 Biểu đồ Cột">
+                <Grid Margin="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Biểu đồ trạng thái -->
+                    <GroupBox Header="Theo Trạng thái" Margin="5">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <!-- Tiêu đề biểu đồ -->
+                                <RowDefinition Height="*"/>
+                                <!-- Biểu đồ -->
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Số lượng task theo trạng thái:" FontWeight="SemiBold" Margin="0,0,0,5" HorizontalAlignment="Center"/>
+                            <lc:CartesianChart Grid.Row="1" x:Name="StatusChart" Series="{Binding StatusSeries}" />
+                        </Grid>
+                    </GroupBox>
+
+                    <!-- Biểu đồ ưu tiên -->
+                    <GroupBox Header="Theo Ưu tiên" Grid.Column="1" Margin="5">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <!-- Tiêu đề biểu đồ -->
+                                <RowDefinition Height="*"/>
+                                <!-- Biểu đồ -->
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Số lượng task theo mức độ ưu tiên:" FontWeight="SemiBold" Margin="0,0,0,5" HorizontalAlignment="Center"/>
+                            <lc:CartesianChart Grid.Row="1" x:Name="PriorityChart" Series="{Binding PrioritySeries}" />
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab Biểu đồ Tròn -->
+            <TabItem Header="🍩 Biểu đồ Tròn">
+                <Grid Margin="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Biểu đồ tròn trạng thái -->
+                    <GroupBox Header="Theo Trạng thái" Margin="5">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <!-- Tiêu đề biểu đồ -->
+                                <RowDefinition Height="*"/>
+                                <!-- Biểu đồ -->
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Tỷ lệ task theo trạng thái:" FontWeight="SemiBold" Margin="0,0,0,5" HorizontalAlignment="Center"/>
+                            <lc:PieChart Grid.Row="1" x:Name="StatusPieChart" Series="{Binding StatusPieSeries}" />
+                        </Grid>
+                    </GroupBox>
+
+                    <!-- Biểu đồ tròn ưu tiên -->
+                    <GroupBox Header="Theo Ưu tiên" Grid.Column="1" Margin="5">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <!-- Tiêu đề biểu đồ -->
+                                <RowDefinition Height="*"/>
+                                <!-- Biểu đồ -->
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Text="Tỷ lệ task theo mức độ ưu tiên:" FontWeight="SemiBold" Margin="0,0,0,5" HorizontalAlignment="Center"/>
+                            <lc:PieChart Grid.Row="1" x:Name="PriorityPieChart" Series="{Binding PriorityPieSeries}" />
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- Tab Biểu đồ Theo Tháng -->
+            <TabItem Header="📅 Theo Tháng">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- Tiêu đề và ghi chú -->
+                        <RowDefinition Height="*"/>
+                        <!-- Biểu đồ -->
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="10,5">
+                        <TextBlock Text="Số lượng task được tạo theo tháng:" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock Text="(Dựa trên ngày tạo - CreatedDate)" 
+                                   FontSize="11" FontStyle="Italic" HorizontalAlignment="Center" Foreground="Gray"/>
+                    </StackPanel>
+
+                    <!-- CartesianChart để hiển thị biểu đồ theo tháng -->
+                    <lc:CartesianChart Grid.Row="1" x:Name="MonthlyTasksChart" Margin="10"/>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+    </Grid>
+</Window>

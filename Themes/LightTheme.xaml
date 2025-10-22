@@ -1,0 +1,44 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Màu nền -->
+    <SolidColorBrush x:Key="WindowBackground" Color="White"/>
+    <SolidColorBrush x:Key="HeaderTextBrush" Color="#333333"/>
+    <SolidColorBrush x:Key="NormalTextBrush" Color="#666666"/>
+    <SolidColorBrush x:Key="ButtonBackground" Color="#2196F3"/>
+    <SolidColorBrush x:Key="ButtonForeground" Color="White"/>
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#CCCCCC"/>
+    <SolidColorBrush x:Key="ColumnBackground" Color="#F8F9FA"/>
+    <SolidColorBrush x:Key="StatusBackground" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="StatusForeground" Color="Black"/>
+
+    <!-- Màu ưu tiên -->
+    <SolidColorBrush x:Key="PriorityLowBackground" Color="#E8F5E8"/>
+    <!-- Xanh lá nhạt -->
+    <SolidColorBrush x:Key="PriorityMediumBackground" Color="#FFF3E0"/>
+    <!-- Cam nhạt -->
+    <SolidColorBrush x:Key="PriorityHighBackground" Color="#FFEBEE"/>
+    <!-- Đỏ nhạt -->
+
+    <SolidColorBrush x:Key="PriorityLowTextBrush" Color="Black"/>
+    <SolidColorBrush x:Key="PriorityMediumTextBrush" Color="Black"/>
+    <SolidColorBrush x:Key="PriorityHighTextBrush" Color="White"/>
+
+    <!-- TextBlock trong task card -->
+    <SolidColorBrush x:Key="TaskTitleBrush" Color="Black"/>
+    <SolidColorBrush x:Key="TaskDescriptionBrush" Color="#666666"/>
+    <SolidColorBrush x:Key="TaskDeadlineBrush" Color="Black"/>
+    <SolidColorBrush x:Key="TaskPriorityBrush" Color="Black"/>
+
+    <!-- Header Kanban -->
+    <SolidColorBrush x:Key="InProgressHeaderBrush" Color="#FF9800"/>
+    <!-- Cam -->
+    <SolidColorBrush x:Key="CompletedHeaderBrush" Color="#4CAF50"/>
+    <!-- Xanh lá -->
+
+    <!-- Border & Button -->
+    <SolidColorBrush x:Key="BorderBrush" Color="Black"/>
+    <SolidColorBrush x:Key="HoverBackground" Color="#F5F5F5"/>
+    <SolidColorBrush x:Key="HoverText" Color="#007ACC"/>
+
+</ResourceDictionary>

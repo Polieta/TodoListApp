@@ -1,0 +1,56 @@
+﻿<Window x:Class="TodoListApp.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cài đặt" Height="450" Width="500"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F5F5">
+    <ScrollViewer>
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="⚙️ Cài đặt" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+
+            <!-- Chế độ sáng/tối -->
+            <StackPanel Grid.Row="1" Margin="0,0,0,15">
+                <TextBlock Text="Chế độ hiển thị:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="LightThemeRadio" Content="Sáng" Margin="0,0,20,0" GroupName="ThemeGroup"/>
+                    <RadioButton x:Name="DarkThemeRadio" Content="Tối" GroupName="ThemeGroup"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Chọn âm thanh -->
+            <StackPanel Grid.Row="2" Margin="0,0,0,15">
+                <TextBlock Text="Chọn âm thanh nhắc nhở:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <Button Content="📁 Chọn file âm thanh" Click="SelectSound_Click" Width="150" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="SelectedSoundText" Text="Chưa chọn file" FontStyle="Italic" Margin="0,5,0,0"/>
+            </StackPanel>
+
+            <!-- Chọn ảnh nền -->
+            <StackPanel Grid.Row="3" Margin="0,0,0,15">
+                <TextBlock Text="Chọn ảnh nền thông báo:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <Button Content="🖼️ Chọn file ảnh" Click="SelectImage_Click" Width="150" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="SelectedImageText" Text="Chưa chọn file" FontStyle="Italic" Margin="0,5,0,0"/>
+            </StackPanel>
+
+            <!-- Liên hệ -->
+            <StackPanel Grid.Row="4" Margin="0,0,0,15">
+                <TextBlock Text="Liên hệ hỗ trợ:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <Button Content="📧 Gửi email" Click="Contact_Click" Width="120" HorizontalAlignment="Left"/>
+            </StackPanel>
+
+            <!-- Nút đóng -->
+            <StackPanel Grid.Row="6" VerticalAlignment="Bottom" HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button Content="❌ Đóng" Width="80" Click="Close_Click"/>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Window>

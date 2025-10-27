@@ -1,13 +1,8 @@
-﻿using NetSparkleUpdater;
-//using NetSparkleUpdater.Enums; // Nếu cần enum UpdateStatus
-//using NetSparkleUpdater.Events; // Nếu cần EventArgs
-//using NetSparkleUpdater.Interfaces;
-//using System;
-//using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
-using System.Security.Cryptography.Xml;
+using System.IO;
+using System.Net.Http;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,12 +11,15 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Xml.Linq;
+
 
 namespace TodoListApp
 {
+
+
     public partial class MainWindow : Window
     {
-        private SparkleUpdater? _sparkle; // Biến để quản lý NetSparkleUpdater
 
         private DatabaseService _databaseService;
         public ObservableCollection<TodoTask> _inProgressTasks;
@@ -48,6 +46,8 @@ namespace TodoListApp
 
         private string _currentSearchTerm = string.Empty;
         private DateTime? _filteredDate = null;
+
+        public object NetSparkleAppConfig { get; private set; }
 
         public MainWindow(ReminderService reminderService) : this()
         {
@@ -138,12 +138,6 @@ namespace TodoListApp
                 System.Diagnostics.Debug.WriteLine($"[HandleReminderTriggered] Không tìm thấy task với Id {task.Id} trong danh sách của MainWindow.");
                 return; // Dừng xử lý
             }
-
-            // Sử dụng taskInMainWindow (phiên bản trong danh sách của MainWindow) thay vì task được truyền vào
-            // Vì taskInMainWindow là cùng một đối tượng được `ReminderService` cập nhật thông qua database
-            // và được `MainWindow` quản lý
-
-            // --- HẾT SỬA LỖI ---
 
             //_reminderService?.PlayNotificationSound();
             ShowTaskNotification(title, message, taskInMainWindow); // <-- Dùng taskInMainWindow
@@ -244,7 +238,7 @@ namespace TodoListApp
                     }
 
                     // *** TẠO NotificationWindow Ở ĐÂY, TRÊN UI THREAD ***
-                    var notificationWindow = new NotificationWindow(title, fullMessage, "🔔");
+                    var notificationWindow = new NotificationWindow(title, fullMessage, "🔔", task);
 
                     // *** QUAN TRỌNG: Đăng ký sự kiện NotificationResult ***
                     notificationWindow.NotificationResult += (sender, e) =>
@@ -1553,49 +1547,6 @@ namespace TodoListApp
             var app = (App)Application.Current;
             app.ExitApplication();
         }
-        // --- THAY THẾ LỚP NoSignatureVerifier CŨ ---
-        //public class NoSignatureVerifier : NetSparkleUpdater.Interfaces.ISignatureVerifier // <-- CHỈ ĐỊNH RÕ RÀNG NAMESPACE
-        //{
-        //    public bool Verify(string filePath, string signature)
-        //    {
-        //        // Luôn trả về true - Không kiểm tra chữ ký
-        //        return true;
-        //    }
-
-        //    public bool HasValidKeyInformation()
-        //    {
-        //        // Luôn trả về true - Không có khóa hợp lệ
-        //        return true;
-        //    }
-
-        //    public bool VerifySignatureOfBytes(byte[] data, byte[] signature)
-        //    {
-        //        // Luôn trả về true - Không kiểm tra chữ ký trên dữ liệu byte
-        //        return true;
-        //    }
-
-        //    public bool VerifySignatureOfFile(string filePath, byte[] signature)
-        //    {
-        //        // Luôn trả về true - Không kiểm tra chữ ký trên tệp
-        //        return true;
-        //    }
-
-        //    public bool VerifySignatureOfString(string content, string signature)
-        //    {
-        //        // Luôn trả về true - Không kiểm tra chữ ký trên chuỗi
-        //        return true;
-        //    }
-
-        //    public NetSparkleUpdater.Enums.SignatureSecurityMode SecurityMode
-        //    {
-        //        get
-        //        {
-        //            // Trả về chế độ an toàn tối thiểu
-        //            return NetSparkleUpdater.Enums.SignatureSecurityMode.None;
-        //        }
-        //    }
-        //}
-        // --- HẾT THAY THẾ LỚP NoSignatureVerifier CŨ ---
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             TitleTextBox.Focus();
@@ -1605,50 +1556,69 @@ namespace TodoListApp
 
             _startupTimer.Start();
 
-
-            // --- KHỞI TẠO NETSPARKLEUPDATER ---
+        }
+        private async void CheckForUpdates_Click(object sender, RoutedEventArgs e)
+        {
+            const string AppCastUrl = "https://raw.githubusercontent.com/Polieta/TodoListApp/main/AppCast.xml";
             try
             {
-                // Thay YOUR_USERNAME và YOUR_REPOSITORY_NAME bằng tên thật của bạn trên GitHub
-                string appCastUrl = "https://raw.githubusercontent.com/Polieta/TodoListApp/main/AppCast.xml";
-                //var verifier = new NoSignatureVerifier();
-                //// Khởi tạo SparkleUpdater với URL AppCast
-                //_sparkle = new SparkleUpdater(appCastUrl, verifier);
+                // 1. Lấy phiên bản hiện tại
+                var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
 
+                // 2. Tải và parse AppCast.xml
+                using var client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(10);
+                string xml = await client.GetStringAsync(AppCastUrl);
+                var doc = XDocument.Parse(xml);
 
-                System.Diagnostics.Debug.WriteLine("[MainWindow] NetSparkleUpdater đã được khởi tạo.");
+                // 3. Lấy thông tin phiên bản mới nhất
+                var item = doc.Descendants("item").FirstOrDefault();
+                if (item == null) { MessageBox.Show("Không tìm thấy cập nhật."); return; }
+
+                var enclosure = item.Element("enclosure");
+                var versionStr = enclosure?.Attribute(XName.Get("version", "http://www.andymatuschak.org/xml-namespaces/sparkle"))?.Value;
+                var downloadUrl = enclosure?.Attribute("url")?.Value?.Trim(); // ⚠️ Trim để loại bỏ dấu cách thừa
+
+                if (string.IsNullOrEmpty(versionStr) || string.IsNullOrEmpty(downloadUrl))
+                { MessageBox.Show("Dữ liệu cập nhật không hợp lệ."); return; }
+
+                // 4. So sánh phiên bản
+                if (!Version.TryParse(versionStr, out Version latestVersion))
+                { MessageBox.Show("Phiên bản không hợp lệ."); return; }
+
+                if (latestVersion <= currentVersion)
+                {
+                    MessageBox.Show("Bạn đang dùng phiên bản mới nhất.", "Cập nhật", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // 5. Hỏi người dùng
+                var result = MessageBox.Show(
+                    $"Có phiên bản mới ({latestVersion})!\n\nBạn có muốn cập nhật ngay?",
+                    "Cập nhật sẵn sàng",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (result != MessageBoxResult.Yes) return;
+
+                // 6. Tải file mới về thư mục tạm
+                string tempExe = Path.Combine(Path.GetTempPath(), "TodoListApp_Update.exe");
+
+                // ✅ SỬA LỖI: Dùng ReadAsStreamAsync thay vì DownloadFileTaskAsync
+                using var response = await client.GetAsync(downloadUrl);
+                response.EnsureSuccessStatusCode();
+                using var stream = await response.Content.ReadAsStreamAsync();
+                using var fileStream = new FileStream(tempExe, FileMode.Create, FileAccess.Write, FileShare.None);
+                await stream.CopyToAsync(fileStream);
+
+                // 7. Bắt đầu cập nhật tự động
+                SelfUpdater.ApplyUpdateAndRestart(tempExe);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[MainWindow] Lỗi khi khởi tạo NetSparkleUpdater: {ex.Message}");
-                // Có thể hiển thị MessageBox nếu muốn, nhưng tốt hơn là chỉ log vì lỗi này không nên làm crash app
-                // MessageBox.Show($"Lỗi khởi tạo trình cập nhật: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            // --- HẾT KHỞI TẠO NETSPARKLEUPDATER ---
-        }
-        // --- THÊM PHƯƠNG THỨC KIỂM TRA CẬP NHẬT THỦ CÔNG ---
-        private async void CheckForUpdates_Click(object sender, RoutedEventArgs e)
-        {
-            if (_sparkle != null)
-            {
-                try
-                {
-                    // Gọi phương thức kiểm tra cập nhật và hiển thị UI cho người dùng nếu có bản mới
-                    await _sparkle.CheckForUpdatesAtUserRequest();
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[MainWindow] Lỗi khi kiểm tra cập nhật thủ công: {ex.Message}");
-                    MessageBox.Show($"Lỗi khi kiểm tra cập nhật: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-            else
-            {
-                MessageBox.Show("Trình cập nhật chưa được khởi tạo.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Không thể cập nhật:\n{ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        // --- HẾT PHƯƠNG THỨC KIỂM TRA CẬP NHẬT THỦ CÔNG ---
-
 
         // Event handler cho timer
         private void StartupTimer_Tick(object? sender, EventArgs e)
@@ -1671,9 +1641,7 @@ namespace TodoListApp
             // --- Kiểm tra trong danh sách Chưa hoàn thành (_inProgressTasks) ---
             foreach (var task in _inProgressTasks.ToList()) // ToList để tránh lỗi khi thay đổi collection trong loop
             {
-                // Chỉ xử lý task có Deadline HOẶC ReminderTime là quá khứ
-                if ((task.Deadline.HasValue && task.Deadline.Value < now) ||
-                    (task.ReminderTime.HasValue && task.ReminderTime.Value < now))
+                if (task.Deadline.HasValue && task.Deadline.Value < now)
                 {
                     if (task.IsRepeating)
                     {
@@ -1762,22 +1730,6 @@ namespace TodoListApp
                     }
                 }
             }
-            // --- Hết kiểm tra _inProgressTasks ---
-
-            // --- Kiểm tra trong danh sách Hoàn thành (_completedTasks) (ÍT KHI CẦN THIẾT) ---
-            // (Bạn có thể bỏ phần này nếu không muốn xử lý task hoàn thành)
-            /*
-            foreach (var task in _completedTasks.ToList())
-            {
-                if ((task.Deadline.HasValue && task.Deadline.Value < now) ||
-                    (task.ReminderTime.HasValue && task.ReminderTime.Value < now))
-                {
-                    // Tương tự như trên, hoặc đơn giản là bỏ qua
-                    // Ở đây, ta bỏ qua task hoàn thành
-                }
-            }
-            */
-            // --- Hết kiểm tra _completedTasks ---
 
             // --- Cập nhật vào Database ---
             foreach (var task in tasksToUpdate)

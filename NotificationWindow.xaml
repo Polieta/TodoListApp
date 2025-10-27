@@ -195,15 +195,18 @@
 
                 <!-- Nút hành động -->
                 <StackPanel Grid.Row="5"
-                           Orientation="Horizontal"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Bottom">
-                    <Button Content="⏰ Từ từ"
-                        Style="{StaticResource SecondaryButton}"
-                            Click="PostponeButton_Click"/>
-                    <Button Content="✅ Chuyển trạng thái"
-                            Style="{StaticResource PrimaryButton}"
-                            Click="CompleteTaskButton_Click"/>
+                   Orientation="Horizontal"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom">
+                            <Button Content="⏰ Từ từ"
+                Style="{StaticResource SecondaryButton}"
+                Click="PostponeButton_Click"/>
+                            <Button Content="🔁 Nhắc lại sau..."
+                Style="{StaticResource SecondaryButton}"
+                Click="CustomPostponeButton_Click"/>
+                            <Button Content="✅ Chuyển trạng thái"
+                    Style="{StaticResource PrimaryButton}"
+                    Click="CompleteTaskButton_Click"/>
                 </StackPanel>
             </Grid>
         </Border>

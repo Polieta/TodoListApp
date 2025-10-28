@@ -7,6 +7,17 @@
 		<language>vi</language>
 
 		<item>
+			<title>Phiên bản 1.2.0</title>
+			<sparkle:releaseNotesLink>https://raw.githubusercontent.com/Polieta/TodoListApp/main/ReleaseNotes.md</sparkle:releaseNotesLink>
+			<pubDate>Tue, 28 Oct 2025 15:00:00 +0700</pubDate>
+			<enclosure
+			  url="https://github.com/Polieta/TodoListApp/releases/download/v1.2.0/TodoListApp.exe"
+			  sparkle:version="1.2.0.0"
+			  sparkle:shortVersionString="1.2.0"
+			  length="180125341"
+			type="application/octet-stream" />
+		</item>
+		<item>
 			<title>Phiên bản 1.1.0</title>
 			<sparkle:releaseNotesLink>https://raw.githubusercontent.com/Polieta/TodoListApp/main/ReleaseNotes.md</sparkle:releaseNotesLink>
 			<pubDate>Fri, 25 Oct 2025 10:00:00 +0700</pubDate>
@@ -15,10 +26,10 @@
 			  sparkle:version="1.1.0.0"
 			  sparkle:shortVersionString="1.1.0"
 			  length="179306496"
-			type="application/octet-stream" />
+			  type="application/octet-stream" />
 		</item>
 
-		<!-- Giữ lại mục cũ nếu muốn hỗ trợ cập nhật từ nhiều phiên bản -->
+		<!-- Giữ lại mục cũ nếu muốn hỗ trợ cập nhật từ v1.0.0 -->
 		<item>
 			<title>Phiên bản 1.0.0</title>
 			<enclosure

@@ -13,14 +13,10 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml.Linq;
 
-
 namespace TodoListApp
 {
-
-
     public partial class MainWindow : Window
     {
-
         private DatabaseService _databaseService;
         public ObservableCollection<TodoTask> _inProgressTasks;
         private ObservableCollection<TodoTask> _completedTasks;
@@ -37,7 +33,6 @@ namespace TodoListApp
         private Predicate<object> _originalInProgressFilter;
         private Predicate<object> _originalCompletedFilter;
         
-
         private TodoTask? _draggedTask;
         private Point _startPoint;
         private bool _isDragging;
@@ -48,6 +43,12 @@ namespace TodoListApp
         private DateTime? _filteredDate = null;
 
         public object NetSparkleAppConfig { get; private set; }
+
+        // --- Thêm các biến này ---
+        private int? _currentPriorityFilter = null; // Theo dõi ưu tiên đang lọc: 0, 1, 2. null = không lọc
+        private bool _isDeadlineFilterActive = false; // Theo dõi xem đang có lọc deadline không
+        private string _currentDeadlineRangeFilter = string.Empty; // Lưu cú pháp deadline:YYYY..YYYY nếu đang lọc
+        // --- Hết phần thêm ---
 
         public MainWindow(ReminderService reminderService) : this()
         {
@@ -71,7 +72,6 @@ namespace TodoListApp
             _startPoint = e.GetPosition(null);
             _isDragging = false;
         }
-
         private void SetupSorting(ICollectionView view)
         {
             if (view == null) return;
@@ -96,7 +96,6 @@ namespace TodoListApp
             var titleSortDesc = new SortDescription("Title", ListSortDirection.Ascending);
             view.SortDescriptions.Add(titleSortDesc);
         }
-
         private void InitializeData()
         {
             _databaseService = new DatabaseService();
@@ -316,19 +315,18 @@ namespace TodoListApp
         }
         private void UpdateInProgressTasksView()
         {
-            // Tính toán totalTasks dựa trên bộ lọc hiện tại (search và date)
+            // Tính toán totalTasks dựa trên bộ lọc hiện tại (search, priority, deadline range)
+            // HOẶC nếu _filteredDate được đặt, tính theo _filteredDate
             int totalTasks;
-            if (!string.IsNullOrEmpty(_currentSearchTerm))
+            if (_filteredDate.HasValue)
             {
-                totalTasks = _inProgressTasks.Count(t => IsTaskMatch(t, _currentSearchTerm));
-            }
-            else if (_filteredDate.HasValue)
-            {
+                // Nếu _filteredDate có giá trị, chỉ đếm số task có deadline trùng ngày này
                 totalTasks = _inProgressTasks.Count(t => t.Deadline.HasValue && t.Deadline.Value.Date == _filteredDate.Value);
             }
             else
             {
-                totalTasks = _inProgressTasks.Count;
+                // Nếu không, dùng IsTaskMatch 4 tham số để đếm
+                totalTasks = _inProgressTasks.Count(t => IsTaskMatch(t, _currentSearchTerm, _currentPriorityFilter, _currentDeadlineRangeFilter));
             }
 
             var totalPages = (totalTasks + PageSize - 1) / PageSize;
@@ -337,9 +335,6 @@ namespace TodoListApp
             else if (totalTasks == 0)
                 _inProgressCurrentPage = 1;
 
-            var startIndex = (_inProgressCurrentPage - 1) * PageSize;
-            var endIndex = startIndex + PageSize - 1; // <-- TÍNH endIndex Ở ĐÂY, TRONG PHẠM VI PHƯƠNG THỨC
-
             // GẮN LẠI ItemsSource ĐỂ ĐẢM BẢO ListBox bind đến _inProgressView
             InProgressTasksList.ItemsSource = _inProgressView;
 
@@ -347,30 +342,38 @@ namespace TodoListApp
             _inProgressView.Refresh();
 
             // --- Xây dựng Filter kết hợp ---
-            // Biến đếm item đã qua filter tìm kiếm và ngày
+            // Biến đếm item đã qua filter
             int itemIndex = -1;
-            _inProgressView.Filter = item => // <-- Filter là một hàm ẩn danh
+            _inProgressView.Filter = item =>
             {
                 var task = item as TodoTask;
                 if (task == null) return false;
 
-                // 1. Kiểm tra điều kiện tìm kiếm (nếu có)
-                bool matchesSearch = string.IsNullOrEmpty(_currentSearchTerm) || IsTaskMatch(task, _currentSearchTerm);
+                bool isMatch = false;
 
-                // 2. Kiểm tra điều kiện lọc theo ngày (nếu có)
-                bool matchesDate = !_filteredDate.HasValue || (task.Deadline.HasValue && task.Deadline.Value.Date == _filteredDate.Value);
+                if (_filteredDate.HasValue)
+                {
+                    // 1. Nếu _filteredDate được đặt -> chỉ kiểm tra ngày
+                    isMatch = task.Deadline.HasValue && task.Deadline.Value.Date == _filteredDate.Value;
+                }
+                else
+                {
+                    // 2. Nếu _filteredDate không được đặt -> kiểm tra các bộ lọc mới
+                    isMatch = IsTaskMatch(task, _currentSearchTerm, _currentPriorityFilter, _currentDeadlineRangeFilter);
+                }
 
-                // Nếu không khớp tìm kiếm HOẶC ngày, không hiển thị
-                if (!matchesSearch || !matchesDate)
+                if (!isMatch)
                 {
                     return false; // Bị loại khỏi kết quả lọc
                 }
 
-                // Nếu khớp tìm kiếm và ngày, tăng bộ đếm cho mục đích phân trang
+                // Nếu khớp các điều kiện lọc, tăng bộ đếm cho mục đích phân trang
                 itemIndex++;
 
                 // 3. Kiểm tra điều kiện phân trang DỰA TRÊN itemIndex đã tăng
-                // startIndex và endIndex được bắt (capture) từ phạm vi bên ngoài phương thức này
+                var startIndex = (_inProgressCurrentPage - 1) * PageSize;
+                var endIndex = startIndex + PageSize - 1;
+
                 bool isInPageRange = itemIndex >= startIndex && itemIndex <= endIndex;
 
                 // Trả về true nếu thỏa mãn điều kiện lọc (đã xong) VÀ nằm trong trang hiện tại
@@ -380,7 +383,12 @@ namespace TodoListApp
 
 
             // --- Cập nhật UI phân trang và số lượng ---
-            if (!string.IsNullOrEmpty(_currentSearchTerm) || _filteredDate.HasValue)
+            // Cập nhật text dựa trên loại filter đang hoạt động
+            if (_filteredDate.HasValue)
+            {
+                InProgressCountText.Text = $"Tìm thấy {totalTasks} task(s) cho ngày {_filteredDate.Value:dd/MM/yyyy}";
+            }
+            else if (!string.IsNullOrEmpty(_currentSearchTerm) || _currentPriorityFilter.HasValue || _isDeadlineFilterActive)
             {
                 InProgressCountText.Text = $"Tìm thấy {totalTasks} task(s)";
             }
@@ -388,7 +396,18 @@ namespace TodoListApp
             {
                 InProgressCountText.Text = $"Tìm thấy {totalTasks} tasks";
             }
-            InProgressPageText.Text = string.IsNullOrEmpty(_currentSearchTerm) && !_filteredDate.HasValue ? $"Trang {_inProgressCurrentPage}" : $"Trang {_inProgressCurrentPage} (/{totalPages})";
+
+            // Cập nhật text trang
+            if (_filteredDate.HasValue)
+            {
+                InProgressPageText.Text = $"Trang {_inProgressCurrentPage} (/{(totalTasks > 0 ? totalPages : 1)})";
+            }
+            else
+            {
+                InProgressPageText.Text = string.IsNullOrEmpty(_currentSearchTerm) && !_currentPriorityFilter.HasValue && !_isDeadlineFilterActive ? $"Trang {_inProgressCurrentPage}" : $"Trang {_inProgressCurrentPage} (/{totalPages})";
+            }
+
+            // Cập nhật visibility cho các nút phân trang và thông báo
             PrevInProgressBtn.Visibility = _inProgressCurrentPage > 1 ? Visibility.Visible : Visibility.Collapsed;
             NextInProgressBtn.Visibility = (_inProgressCurrentPage < totalPages && totalPages > 0) ? Visibility.Visible : Visibility.Collapsed;
             NoInProgressTasksText.Visibility = totalTasks == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -402,15 +421,13 @@ namespace TodoListApp
             if (!string.IsNullOrEmpty(_currentSearchTerm))
             {
                 // Nếu đang tìm kiếm, totalTasks là số lượng task trong _completedTasks khớp với _currentSearchTerm
-                totalTasks = _completedTasks.Count(t => IsTaskMatch(t, _currentSearchTerm));
+                totalTasks = _completedTasks.Count(t => IsTaskMatch(t, _currentSearchTerm, _currentPriorityFilter, _currentDeadlineRangeFilter));
             }
             else
             {
                 // Nếu không tìm kiếm, totalTasks là tổng số task trong _completedTasks
                 totalTasks = _completedTasks.Count;
             }
-            // --- Hết tính toán totalTasks ---
-
             var totalPages = (totalTasks + PageSize - 1) / PageSize;
             if (_completedCurrentPage > totalPages && totalPages > 0)
                 _completedCurrentPage = totalPages;
@@ -418,46 +435,53 @@ namespace TodoListApp
                 _completedCurrentPage = 1;
 
             var startIndex = (_completedCurrentPage - 1) * PageSize;
+
+            CompletedTasksList.ItemsSource = _completedView;
             _completedView.Refresh();
 
+            int itemIndex = -1;
             // --- Xây dựng Filter kết hợp ---
             _completedView.Filter = item =>
             {
                 var task = item as TodoTask;
                 if (task == null) return false;
 
-                // 1. Kiểm tra điều kiện tìm kiếm (nếu có)
-                bool matchesSearch = string.IsNullOrEmpty(_currentSearchTerm) || IsTaskMatch(task, _currentSearchTerm);
-                var filteredItems = _completedView.OfType<TodoTask>().ToList();
-                // 2. Kiểm tra điều kiện phân trang
-                // Lưu ý: Tương tự như trên, logic phân trang cần xem xét lại khi có filter tìm kiếm.
-                var index = _completedTasks.IndexOf(task);
-                bool isInPageRange = index >= startIndex && index < startIndex + PageSize;
+                // 1. ÁP DỤNG TẤT CẢ CÁC BỘ LỌC (Ưu tiên, Deadline Range, Tìm kiếm văn bản)
+                bool matchesAllFilters = IsTaskMatch(task, _currentSearchTerm, _currentPriorityFilter, _currentDeadlineRangeFilter);
 
-                // Trả về true nếu thỏa mãn cả hai điều kiện
-                return matchesSearch && isInPageRange;
+                if (!matchesAllFilters)
+                {
+                    return false; // Bị loại khỏi kết quả lọc
+                }
+
+                // Nếu khớp tất cả các điều kiện lọc, tăng bộ đếm cho mục đích phân trang
+                itemIndex++;
+
+                // 2. Kiểm tra điều kiện phân trang DỰA TRÊN itemIndex đã tăng
+                var startIndex = (_completedCurrentPage - 1) * PageSize;
+                var endIndex = startIndex + PageSize - 1;
+
+                bool isInPageRange = itemIndex >= startIndex && itemIndex <= endIndex;
+
+                // Trả về true nếu thỏa mãn điều kiện lọc (đã xong) VÀ nằm trong trang hiện tại
+                return isInPageRange;
             };
-            // --- Hết xây dựng Filter kết hợp ---
-
-            // --- Cập nhật UI phân trang và số lượng ---
             // Cập nhật Text cho CompletedCountText dựa trên chế độ
-            if (!string.IsNullOrEmpty(_currentSearchTerm))
+            if (!string.IsNullOrEmpty(_currentSearchTerm) || _currentPriorityFilter.HasValue || _isDeadlineFilterActive)
             {
-                // Nếu đang tìm kiếm, hiển thị "Tìm thấy ..."
+                // Nếu đang tìm kiếm hoặc lọc, hiển thị "Tìm thấy ..."
                 CompletedCountText.Text = $"Tìm thấy {totalTasks} task(s)";
             }
             else
             {
-                // Nếu không tìm kiếm, hiển thị số lượng bình thường
+                // Nếu không tìm kiếm và không lọc, hiển thị số lượng bình thường
                 CompletedCountText.Text = $"{totalTasks} tasks";
             }
 
             // Cập nhật Text cho CompletedPageText
-            CompletedPageText.Text = string.IsNullOrEmpty(_currentSearchTerm) ? $"Trang {_completedCurrentPage}" : $"Trang {_completedCurrentPage} (/{totalPages})";
+            CompletedPageText.Text = string.IsNullOrEmpty(_currentSearchTerm) && !_currentPriorityFilter.HasValue && !_isDeadlineFilterActive ? $"Trang {_completedCurrentPage}" : $"Trang {_completedCurrentPage} (/{totalPages})";
 
             // Cập nhật Visibility cho các nút phân trang và thông báo không có task
-             CompletedCountText.Text = string.IsNullOrEmpty(_currentSearchTerm) && !_filteredDate.HasValue ? $"{totalTasks} tasks" : $"Tìm thấy {totalTasks} task(s)";
-        CompletedPageText.Text = string.IsNullOrEmpty(_currentSearchTerm) && !_filteredDate.HasValue ? $"Trang {_completedCurrentPage}" : $"Trang {_completedCurrentPage} (/{totalPages})";
             PrevCompletedBtn.Visibility = _completedCurrentPage > 1 ? Visibility.Visible : Visibility.Collapsed;
             NextCompletedBtn.Visibility = (_completedCurrentPage < totalPages && totalPages > 0) ? Visibility.Visible : Visibility.Collapsed;
             NoCompletedTasksText.Visibility = totalTasks == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -1751,7 +1775,6 @@ namespace TodoListApp
             }
             // --- Hết cập nhật vào Database ---
         }
-
         private DateTime? CalculateNextValidRepeatDate(DateTime originalDate, RepeatFrequency frequency, DateTime now)
         {
             DateTime nextDate = originalDate;
@@ -1813,77 +1836,269 @@ namespace TodoListApp
         }
         public void ResetSearchFilters()
         {
-            // Reset filter tìm kiếm
+            // Reset filter tìm kiếm văn bản
             _currentSearchTerm = string.Empty;
             // Reset filter theo ngày
-            _filteredDate = null;
+            _currentDeadlineRangeFilter = string.Empty;
+            _isDeadlineFilterActive = false;
+            // Reset filter theo ưu tiên
+            _currentPriorityFilter = null;
 
             // Reset lại trang
             _inProgressCurrentPage = 1;
             _completedCurrentPage = 1;
 
-            InProgressTasksList.ItemsSource = _inProgressView; // <-- THÊM DÒNG NÀY
+            // Gán lại ItemsSource
+            InProgressTasksList.ItemsSource = _inProgressView;
             CompletedTasksList.ItemsSource = _completedView;
 
-            // Gọi Update...View sẽ áp dụng lại Filter (chỉ phân trang, không có tìm kiếm hoặc filter theo ngày)
+            // Gọi Update...View sẽ áp dụng lại Filter (chỉ phân trang, không có tìm kiếm hoặc filter)
             UpdateInProgressTasksView();
             UpdateCompletedTasksView();
             UpdateTaskCounts();
-            StatusText.Text = "Đã reset bộ lọc.";
+            StatusText.Text = "Đã reset tất cả bộ lọc.";
         }
         private void SearchTask_Click(object sender, RoutedEventArgs e)
         {
             var input = SearchTextBox.Text.Trim();
             _currentSearchTerm = input; // Lưu lại từ khóa tìm kiếm
-            _filteredDate = null;
+
+            // Nếu ô tìm kiếm trống, reset các bộ lọc khác
             if (string.IsNullOrEmpty(input))
             {
-                // --- Nếu ô tìm kiếm trống -> Hiển thị tất cả (Reset tìm kiếm) ---
-                ResetSearchFilters();
+                StatusText.Text = "Đã xóa tìm kiếm văn bản.";
+                // Reset filter theo ngày
+                _filteredDate = null;
+                // Reset filter theo deadline range
+                _currentDeadlineRangeFilter = string.Empty;
+                _isDeadlineFilterActive = false;
+                // Reset filter theo ưu tiên
+                _currentPriorityFilter = null;
+
+                // Gọi lại hàm cập nhật view
+                UpdateViewsWithFilters();
                 return;
             }
+            StatusText.Text = $"Tìm kiếm: '{input}'";
+            UpdateViewsWithFilters();
+        }
+        private bool IsTaskMatch(TodoTask task, string searchTerm, int? priorityFilter, string deadlineRangeFilter)
+        {
+            if (task == null)
+                return false;
 
-            // --- Nếu có từ khóa -> Cập nhật lại view với filter tìm kiếm ---
-            // Reset lại trang về 1 khi tìm kiếm mới
+            // --- ÁP DỤNG LỌC THEO ƯU TIÊN ---
+            if (priorityFilter.HasValue)
+            {
+                if (task.Priority != priorityFilter.Value)
+                    return false; // Không khớp ưu tiên
+            }
+
+            // --- ÁP DỤNG LỌC THEO KHOẢNG THỜI GIAN ---
+            if (!string.IsNullOrEmpty(deadlineRangeFilter))
+            {
+                if (deadlineRangeFilter.StartsWith("deadline:"))
+                {
+                    var dateRange = deadlineRangeFilter.Substring(9); // Bỏ phần "deadline:"
+                    var parts = dateRange.Split("..");
+                    if (parts.Length == 2)
+                    {
+                        if (DateTime.TryParse(parts[0], out DateTime from) && DateTime.TryParse(parts[1], out DateTime to))
+                        {
+                            if (task.Deadline.HasValue)
+                            {
+                                var taskDeadlineDate = task.Deadline.Value.Date;
+                                if (taskDeadlineDate < from.Date || taskDeadlineDate > to.Date)
+                                    return false; // Không nằm trong khoảng
+                            }
+                            else
+                            {
+                                // Nếu task không có deadline, và đang lọc theo deadline, thì không khớp
+                                return false;
+                            }
+                        }
+                        else
+                        {
+                            // Cú pháp deadline không hợp lệ, không hiển thị task nào
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        // Cú pháp deadline không đúng, không hiển thị task nào
+                        return false;
+                    }
+                }
+            }
+
+            // --- ÁP DỤNG TÌM KIẾM THEO TỪ KHÓA ---
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                // Tìm theo ID nếu searchTerm là số
+                if (int.TryParse(searchTerm, out int id) && task.Id == id)
+                    return true;
+
+                // Tìm theo Tiêu đề
+                if (task.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                // Tìm theo Mô tả
+                if (!string.IsNullOrEmpty(task.Description) && task.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                // Tìm theo Mức độ ưu tiên (dựa trên text)
+                string priorityText = task.PriorityText.ToLowerInvariant();
+                if (priorityText.Contains(searchTerm.ToLowerInvariant()))
+                    return true;
+
+                // Có thể thêm tìm theo trạng thái, tags, v.v. nếu cần
+
+                // Nếu không khớp từ khóa, trả về false
+                return false;
+            }
+
+            // Nếu qua được tất cả các bước lọc, thì task này khớp
+            return true;
+        }
+        private void FilterByPriorityHigh_Click(object sender, RoutedEventArgs e)
+        {
+            // Kiểm tra xem có đang lọc theo ưu tiên này không
+            if (_currentPriorityFilter == 2) // 2 là Cao
+            {
+                // Nếu đang lọc Cao -> Bỏ lọc ưu tiên
+                _currentPriorityFilter = null;
+                StatusText.Text = "Bỏ lọc theo ưu tiên.";
+            }
+            else
+            {
+                // Ngược lại -> Lọc theo Cao
+                _currentPriorityFilter = 2; // 2 là Cao
+                StatusText.Text = "Lọc theo ưu tiên: Cao.";
+            }
+            // Reset các bộ lọc khác
+            _currentDeadlineRangeFilter = string.Empty;
+            _isDeadlineFilterActive = false;
+            _currentSearchTerm = string.Empty; // Reset tìm kiếm văn bản
+
+            // Gọi lại hàm cập nhật view
+            UpdateViewsWithFilters();
+        }
+        private void FilterByPriorityMedium_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentPriorityFilter == 1) // 1 là Trung bình
+            {
+                _currentPriorityFilter = null;
+                StatusText.Text = "Bỏ lọc theo ưu tiên.";
+            }
+            else
+            {
+                _currentPriorityFilter = 1;
+                StatusText.Text = "Lọc theo ưu tiên: Trung bình.";
+            }
+            _currentDeadlineRangeFilter = string.Empty;
+            _isDeadlineFilterActive = false;
+            _currentSearchTerm = string.Empty;
+            UpdateViewsWithFilters();
+        }
+        private void FilterByPriorityLow_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentPriorityFilter == 0) // 0 là Thấp
+            {
+                _currentPriorityFilter = null;
+                StatusText.Text = "Bỏ lọc theo ưu tiên.";
+            }
+            else
+            {
+                _currentPriorityFilter = 0;
+                StatusText.Text = "Lọc theo ưu tiên: Thấp.";
+            }
+            _currentDeadlineRangeFilter = string.Empty;
+            _isDeadlineFilterActive = false;
+            _currentSearchTerm = string.Empty;
+            UpdateViewsWithFilters();
+        }
+        private void FilterByDeadline_Click(object sender, RoutedEventArgs e)
+        {
+            var dateDialog = new Window
+            {
+                Title = "Chọn khoảng thời gian",
+                Width = 300,
+                Height = 180,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize,
+                Topmost = true
+            };
+
+            var stack = new StackPanel { Margin = new Thickness(15) };
+            stack.Children.Add(new TextBlock { Text = "Từ ngày:", Margin = new Thickness(0, 0, 0, 10) });
+            var fromDate = new DatePicker();
+            stack.Children.Add(fromDate);
+
+            stack.Children.Add(new TextBlock { Text = "Đến ngày:", Margin = new Thickness(0, 10, 0, 10) });
+            var toDate = new DatePicker();
+            stack.Children.Add(toDate);
+
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 20, 0, 0) };
+            var okButton = new Button { Content = "OK", Width = 80, Margin = new Thickness(0, 0, 10, 0) };
+            var cancelButton = new Button { Content = "Hủy", Width = 80 };
+
+            okButton.Click += (s, ev) =>
+            {
+                if (fromDate.SelectedDate.HasValue && toDate.SelectedDate.HasValue)
+                {
+                    var from = fromDate.SelectedDate.Value;
+                    var to = toDate.SelectedDate.Value;
+
+                    if (from <= to) // Kiểm tra ngày hợp lệ
+                    {
+                        // Tạo cú pháp deadline:YYYY-MM-DD..YYYY-MM-DD
+                        _currentDeadlineRangeFilter = $"deadline:{from:yyyy-MM-dd}..{to:yyyy-MM-dd}";
+                        _isDeadlineFilterActive = true;
+                        StatusText.Text = $"Lọc theo deadline: {from:dd/MM/yyyy} - {to:dd/MM/yyyy}";
+
+                        // Reset các bộ lọc khác
+                        _currentPriorityFilter = null;
+                        _currentSearchTerm = string.Empty; // Reset tìm kiếm văn bản
+
+                        // Gọi lại hàm cập nhật view
+                        UpdateViewsWithFilters();
+                    }
+                    else
+                    {
+                        // Nếu ngày không hợp lệ, chỉ báo lỗi, không làm gì thêm
+                        MessageBox.Show("Ngày 'Đến' phải sau hoặc bằng ngày 'Từ'.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                }
+                else
+                {
+                    // Nếu chưa chọn đủ ngày, chỉ báo lỗi, không làm gì thêm
+                    MessageBox.Show("Vui lòng chọn cả hai ngày.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                dateDialog.Close();
+            };
+
+            cancelButton.Click += (s, ev) => dateDialog.Close();
+
+            buttonPanel.Children.Add(okButton);
+            buttonPanel.Children.Add(cancelButton);
+            stack.Children.Add(buttonPanel);
+            dateDialog.Content = stack;
+            dateDialog.ShowDialog();
+        }
+        private void UpdateViewsWithFilters()
+        {
+            // Reset lại trang về 1 khi áp dụng filter mới
             _inProgressCurrentPage = 1;
             _completedCurrentPage = 1;
-            InProgressTasksList.ItemsSource = _inProgressView; // <-- THÊM DÒNG NÀY
-            CompletedTasksList.ItemsSource = _completedView; // <-- THÊM DÒNG NÀY
-            // Gọi Update...View để áp dụng filter tìm kiếm + phân trang mới
+
+            // Gán lại ItemsSource đểICollectionView nhận biết thay đổi
+            InProgressTasksList.ItemsSource = _inProgressView;
+            CompletedTasksList.ItemsSource = _completedView;
+
+            // Gọi Update...View để áp dụng filter
             UpdateInProgressTasksView();
             UpdateCompletedTasksView();
             UpdateTaskCounts();
-            // Cập nhật status text
-            // Đếm số lượng task khớp trong cả hai danh sách
-            int inProgressMatchCount = _inProgressTasks.Count(t => IsTaskMatch(t, input));
-            int completedMatchCount = _completedTasks.Count(t => IsTaskMatch(t, input));
-            StatusText.Text = $"Tìm thấy {inProgressMatchCount + completedMatchCount} task(s) cho '{input}'.";
-        }
-        private bool IsTaskMatch(TodoTask task, string searchTerm)
-        {
-            if (task == null || string.IsNullOrWhiteSpace(searchTerm))
-                return false;
-
-            // Tìm theo ID nếu searchTerm là số
-            if (int.TryParse(searchTerm, out int id) && task.Id == id)
-                return true;
-
-            // Tìm theo Tiêu đề (không phân biệt hoa thường)
-            if (task.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            // Tìm theo Mô tả (không phân biệt hoa thường) - Có thể thêm nếu muốn
-            if (task.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            // Tìm theo Mức độ ưu tiên (dựa trên text)
-            string priorityText = task.PriorityText.ToLowerInvariant(); // Giả định PriorityText trả về "Cao", "Trung bình", "Thấp"
-            if (priorityText.Contains(searchTerm.ToLowerInvariant()))
-                return true;
-
-            // Có thể thêm tìm theo trạng thái, deadline, v.v. nếu cần
-
-            return false; // Không khớp
         }
         private void ShowPriorityPopup_Click(object sender, RoutedEventArgs e)
         {

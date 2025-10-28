@@ -27,6 +27,11 @@
             <Setter Property="Margin" Value="0,4,0,8"/>
         </Style>
 
+        <SolidColorBrush x:Key="PriorityLowBackground" Color="#E8F5E8"/>
+        <SolidColorBrush x:Key="PriorityMediumBackground" Color="#FFF3E0"/>
+        <SolidColorBrush x:Key="PriorityHighBackground" Color="#FFEBEE"/>
+        <SolidColorBrush x:Key="HoverBackground" Color="#F5F5F5"/>
+
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#FF2196F3"/>
             <Setter Property="Foreground" Value="White"/>
@@ -40,10 +45,10 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4"
-                                Padding="{TemplateBinding Padding}">
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="4"
+                        Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -57,6 +62,19 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#F8F9FA"/>
+            <Setter Property="Foreground" Value="#495057"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E9ECEF"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DEE2E6"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="TaskCard" TargetType="Border">
@@ -326,6 +344,27 @@
                         <TextBox x:Name="SearchTextBox" Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" FontSize="13" Foreground="{DynamicResource NormalTextBrush}" />
                     </Border>
                     <Button Content="🔍 Tìm kiếm" Style="{StaticResource ModernButton}" Height="36" Margin="8,0,0,0" Click="SearchTask_Click"/>
+
+                    <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <Button Content="🔴 Cao" Style="{StaticResource SecondaryButton}" Click="FilterByPriorityHigh_Click" Margin="0,0,4,0"/>
+                        <Button Content="🟡 TB" Style="{StaticResource SecondaryButton}" Click="FilterByPriorityMedium_Click" Margin="0,0,4,0"/>
+                        <Button Content="🟢 Thấp" Style="{StaticResource SecondaryButton}" Click="FilterByPriorityLow_Click" Margin="0,0,4,0"/>
+                        <Button Content="📅 Deadline" Style="{StaticResource SecondaryButton}" Click="FilterByDeadline_Click" Margin="0,0,4,0"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Màu nền: " FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource NormalTextBrush}" Margin="0,0,4,0"/>
+                        <Border Background="#FFEBEE" BorderBrush="Black" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
+                            <TextBlock Text="Cao" FontSize="10" Foreground="Black" />
+                        </Border>
+                        <Border Background="#FFF3E0" BorderBrush="Black" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
+                            <TextBlock Text="TB" FontSize="10" Foreground="Black" />
+                        </Border>
+                        <Border Background="#E8F5E8" BorderBrush="Black" BorderThickness="1" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
+                            <TextBlock Text="Thấp" FontSize="10" Foreground="Black" />
+                        </Border>
+                    </StackPanel>
+
                 </StackPanel>
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>

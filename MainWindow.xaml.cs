@@ -1591,7 +1591,7 @@ namespace TodoListApp
 
                 // 2. Tải và parse AppCast.xml
                 using var client = new HttpClient();
-                client.Timeout = TimeSpan.FromSeconds(10);
+                client.Timeout = TimeSpan.FromSeconds(69);
                 string xml = await client.GetStringAsync(AppCastUrl);
                 var doc = XDocument.Parse(xml);
 

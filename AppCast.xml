@@ -6,6 +6,17 @@
 		<description>Cập nhật cho TodoList App.</description>
 		<language>vi</language>
 		<item>
+			<title>Phiên bản 1.2.1</title>
+			<sparkle:releaseNotesLink>https://raw.githubusercontent.com/Polieta/TodoListApp/main/ReleaseNotes.md</sparkle:releaseNotesLink>
+			<pubDate>Wed, 29 Oct 2025 11:00:00 +0700</pubDate>
+			<enclosure
+			  url="https://github.com/Polieta/TodoListApp/releases/download/v1.2.1/TodoListApp.exe"
+			  sparkle:version="1.2.1"
+			  sparkle:shortVersionString="1.2.1"
+			  length="180125341"
+			type="application/octet-stream" />
+		</item>
+		<item>
 			<title>Phiên bản 1.2.0</title>
 			<sparkle:releaseNotesLink>https://raw.githubusercontent.com/Polieta/TodoListApp/main/ReleaseNotes.md</sparkle:releaseNotesLink>
 			<pubDate>Tue, 28 Oct 2025 15:00:00 +0700</pubDate>

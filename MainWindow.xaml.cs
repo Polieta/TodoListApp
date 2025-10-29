@@ -1601,7 +1601,7 @@ namespace TodoListApp
 
                 var enclosure = item.Element("enclosure");
                 var versionStr = enclosure?.Attribute(XName.Get("version", "http://www.andymatuschak.org/xml-namespaces/sparkle"))?.Value;
-                var downloadUrl = enclosure?.Attribute("url")?.Value?.Trim(); // ⚠️ Trim để loại bỏ dấu cách thừa
+                var downloadUrl = enclosure?.Attribute("url")?.Value?.Trim();
 
                 if (string.IsNullOrEmpty(versionStr) || string.IsNullOrEmpty(downloadUrl))
                 { MessageBox.Show("Dữ liệu cập nhật không hợp lệ."); return; }
@@ -1625,25 +1625,70 @@ namespace TodoListApp
 
                 if (result != MessageBoxResult.Yes) return;
 
-                // 6. Tải file mới về thư mục tạm
-                string tempExe = Path.Combine(Path.GetTempPath(), "TodoListApp_Update.exe");
+                // 6. Xác định nơi lưu file ZIP tải về
+                string currentExeLocation = Environment.ProcessPath; // Lấy đường dẫn chính xác của .exe đang chạy
+                if (string.IsNullOrEmpty(currentExeLocation))
+                {
+                    currentExeLocation = Assembly.GetExecutingAssembly().Location;
+                }
 
-                // ✅ SỬA LỖI: Dùng ReadAsStreamAsync thay vì DownloadFileTaskAsync
-                using var response = await client.GetAsync(downloadUrl);
-                response.EnsureSuccessStatusCode();
-                using var stream = await response.Content.ReadAsStreamAsync();
-                using var fileStream = new FileStream(tempExe, FileMode.Create, FileAccess.Write, FileShare.None);
-                await stream.CopyToAsync(fileStream);
+                string targetDirectoryForZip = Path.GetDirectoryName(currentExeLocation); // Thư mục chứa .exe hiện tại
+                string zipFileName = "TodoListApp_Update.zip";
+                string targetZipPath = Path.Combine(targetDirectoryForZip, zipFileName);
 
-                // 7. Bắt đầu cập nhật tự động
-                SelfUpdater.ApplyUpdateAndRestart(tempExe);
+                // Thử tải vào thư mục chứa .exe trước
+                bool downloadSuccessful = false;
+                try
+                {
+                    using var response = await client.GetAsync(downloadUrl);
+                    response.EnsureSuccessStatusCode();
+                    using var stream = await response.Content.ReadAsStreamAsync();
+                    using var fileStream = new FileStream(targetZipPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                    await stream.CopyToAsync(fileStream);
+                    downloadSuccessful = true;
+                    // Nếu thành công, có thể thêm log: "Tải về thành công tại: {targetZipPath}"
+                }
+                catch (UnauthorizedAccessException) // Hoặc các lỗi liên quan đến quyền
+                {
+                    // Nếu không có quyền ghi vào thư mục chứa .exe, tải vào Downloads
+                    string userDownloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+                    targetZipPath = Path.Combine(userDownloadsPath, zipFileName);
+                    try
+                    {
+                        using var response = await client.GetAsync(downloadUrl);
+                        response.EnsureSuccessStatusCode();
+                        using var stream = await response.Content.ReadAsStreamAsync();
+                        using var fileStream = new FileStream(targetZipPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                        await stream.CopyToAsync(fileStream);
+                        downloadSuccessful = true;
+                        // Nếu thành công, có thể thêm log: "Tải về thành công tại: {targetZipPath} (Thư mục Downloads)"
+                    }
+                    catch (Exception ex_download)
+                    {
+                        MessageBox.Show($"Không thể tải file vào thư mục Downloads:\n{ex_download.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return; // Thoát nếu cả hai nơi đều không tải được
+                    }
+                }
+                catch (Exception ex_download)
+                {
+                    MessageBox.Show($"Không thể tải file cập nhật:\n{ex_download.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return; // Thoát nếu gặp lỗi khác ngoài quyền
+                }
+
+                if (!downloadSuccessful)
+                {
+                    MessageBox.Show("Không thể tải file cập nhật.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // 7. Bắt đầu cập nhật tự động, truyền đường dẫn đến file ZIP đã tải
+                SelfUpdater.ApplyUpdateAndRestart(targetZipPath);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Không thể cập nhật:\n{ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Không thể kiểm tra hoặc thực hiện cập nhật:\n{ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
         // Event handler cho timer
         private void StartupTimer_Tick(object? sender, EventArgs e)
         {

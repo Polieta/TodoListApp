@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
+using System.Speech.Synthesis;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,8 +11,10 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Xml.Linq;
+using TodoListApp.EasterEgg;
 
 namespace TodoListApp
 {
@@ -45,10 +48,14 @@ namespace TodoListApp
         public object NetSparkleAppConfig { get; private set; }
 
         // --- Thêm các biến này ---
-        private int? _currentPriorityFilter = null; // Theo dõi ưu tiên đang lọc: 0, 1, 2. null = không lọc
-        private bool _isDeadlineFilterActive = false; // Theo dõi xem đang có lọc deadline không
-        private string _currentDeadlineRangeFilter = string.Empty; // Lưu cú pháp deadline:YYYY..YYYY nếu đang lọc
+        private int? _currentPriorityFilter = null;
+        private bool _isDeadlineFilterActive = false; 
+        private string _currentDeadlineRangeFilter = string.Empty;
         // --- Hết phần thêm ---
+
+        private readonly Key[] _konamiSequence = { Key.Up, Key.Up, Key.Down, Key.Down, Key.Left, Key.Right, Key.Left, Key.Right, Key.A, Key.B, Key.Enter };
+        private int _konamiIndex = 0;
+        private int _clickCount = 0;
 
         public MainWindow(ReminderService reminderService) : this()
         {
@@ -64,6 +71,8 @@ namespace TodoListApp
             _startupTimer = new DispatcherTimer(DispatcherPriority.Background);
             _startupTimer.Interval = TimeSpan.FromMilliseconds(500); // Chờ một chút sau khi window loaded
             _startupTimer.Tick += StartupTimer_Tick;
+
+            TreasureClickCounterTextBlock.Text = _clickCount.ToString();
         }
         private void TaskCard_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -205,6 +214,7 @@ namespace TodoListApp
                 }
             }
         }
+
         // Trong MainWindow.xaml.cs
         private void ShowTaskNotification(string title, string message, TodoTask? task = null)
         {
@@ -234,6 +244,13 @@ namespace TodoListApp
                         {
                             fullMessage += $"\nLặp lại: {task.RepeatFrequencyText}";
                         }
+                    }
+
+                    // Kiểm tra xem Easter Egg đã được kích hoạt chưa (trong phiên hiện tại)
+                    if (EasterEgg.EasterEggHandler.IsEasterEggTAMKHOAActivated())
+                    {
+                        // Nếu đã kích hoạt trong phiên, mở link ngẫu nhiên và ĐẶT LẠI TRẠNG THÁI TRONG PHIÊN
+                        EasterEgg.EasterEggHandler.OpenRandomLink();
                     }
 
                     // *** TẠO NotificationWindow Ở ĐÂY, TRÊN UI THREAD ***
@@ -1055,12 +1072,6 @@ namespace TodoListApp
                         {
                             // 2.a. Không nhập giờ -> Dùng ngày người dùng nhập + 1 giờ tính từ BÂY GIỜ (trên ngày đó)
                             deadline = parsedDate.Date.AddHours(now.Hour).AddMinutes(now.Minute).AddSeconds(now.Second).AddHours(1);
-                            // Hoặc đơn giản hơn: deadline = parsedDate.Date.AddHours(now.Hour + 1).AddMinutes(now.Minute);
-                            // Hoặc theo logic cũ: deadline = parsedDate.Date.AddHours(23).AddMinutes(59); // Giữ nguyên logic cũ nếu muốn
-                            // *** Dựa trên yêu cầu "nếu người dùng nhập ngày mà giờ người dùng không nhập thì thời gian hiện tại thêm 1h" ***
-                            // Cách hiểu 1: Lấy ngày người dùng nhập, giờ là now + 1h -> deadline = parsedDate.Date.AddHours(now.Hour + 1).AddMinutes(now.Minute);
-                            // Cách hiểu 2: Lấy ngày người dùng nhập, giờ là 23:59 -> deadline = parsedDate.Date.AddHours(23).AddMinutes(59);
-                            // Mình chọn cách hiểu 1 vì nó sát với "thời gian hiện tại thêm 1h" hơn.
                             deadline = parsedDate.Date.AddHours(now.Hour).AddMinutes(now.Minute).AddSeconds(now.Second).AddHours(1);
                         }
                         else
@@ -1180,6 +1191,11 @@ namespace TodoListApp
                     RepeatFrequency = repeatFreq // <-- Gán RepeatFrequency
                 };
 
+                if (TodoListApp.EasterEgg.EasterEggHandler.IsLegendaryTask(newTask)) // Thêm namespace nếu cần
+                {
+                    TodoListApp.EasterEgg.EasterEggHandler.ActivateLegendaryTaskEffect(newTask); // Thêm namespace nếu cần
+                }
+
                 var taskId = _databaseService.InsertTask(newTask);
                 newTask.Id = taskId;
                 _inProgressTasks.Insert(0, newTask);
@@ -1207,6 +1223,13 @@ namespace TodoListApp
                 MessageBox.Show($"Lỗi khi thêm task: {ex.Message}", "Lỗi",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+        private void MainWindowGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            _clickCount++;
+            // Gọi hàm tăng số lượng kho báu từ EasterEggHandler
+            TodoListApp.EasterEgg.EasterEggHandler.IncrementTreasureCount(); // Thêm namespace nếu cần
+            TreasureClickCounterTextBlock.Text = _clickCount.ToString();
         }
         private void DeleteTask_Click(object sender, RoutedEventArgs e)
         {
@@ -1554,6 +1577,8 @@ namespace TodoListApp
         }
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
+            this.KeyDown -= MainWindow_KeyDown;
+
             if (MyNotifyIcon != null)
             {
                 MyNotifyIcon.ToolTipText = "TodoList App (Đang chạy nền - Click chuột phải để mở)";
@@ -1573,6 +1598,7 @@ namespace TodoListApp
         }
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+
             TitleTextBox.Focus();
             StatusText.Text = "Sẵn sàng - Kéo thả task để thay đổi trạng thái";
             ApplyMahAppsTheme(Properties.Settings.Default.IsDarkMode);
@@ -1580,6 +1606,95 @@ namespace TodoListApp
 
             _startupTimer.Start();
 
+            this.KeyDown += MainWindow_KeyDown;
+            TodoListApp.EasterEgg.EasterEggHandler.KonamiActivated += OnKonamiActivated;
+        }
+        // Phương thức xử lý sự kiện Konami
+        private void OnKonamiActivated(object sender, EventArgs e)
+        {
+            // Hiển thị thông báo
+            StatusText.Text = "[EasterEgg] Konami Code kích hoạt! Chúc mừng!";
+
+            // GỌI PHƯƠNG THỨC TẠO HIỆU ỨNG CẦU VỒNG
+            ShowRainbowEffect();
+
+            // GỌI PHƯƠNG THỨC ĐỌC TEXT
+            ReadTextEffect("Chúc mừng bạn đã kích hoạt thành công Easter Egg Konami Code! Ứng dụng Todo List của bạn đã được nâng cấp thêm một cấp độ mới!");
+        }
+        private void ReadTextEffect(string textToRead)
+        {
+            // Tạo instance của SpeechSynthesizer
+            var synthesizer = new SpeechSynthesizer();
+            synthesizer.SpeakAsync(textToRead);
+        }
+        private void MainWindow_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == _konamiSequence[_konamiIndex])
+            {
+                _konamiIndex++;
+                if (_konamiIndex == _konamiSequence.Length)
+                {
+                    _konamiIndex = 0; // Reset để có thể kích hoạt lại
+                                      // Kích hoạt Easter Egg Konami
+                    StatusText.Text = "[EasterEgg] Konami Code kích hoạt!";
+                    TodoListApp.EasterEgg.EasterEggHandler.TriggerKonamiEffect();
+                }
+            }
+            else
+            {
+                _konamiIndex = (e.Key == _konamiSequence[0]) ? 1 : 0;
+            }
+        }
+        // --- Thêm phương thức ShowRainbowEffect ---
+        private void ShowRainbowEffect()
+        {
+            // Xóa các hình cũ (nếu có)
+            RainbowCanvas.Children.Clear();
+
+            // Định nghĩa các màu cầu vồng
+            Color[] rainbowColors = {
+                Colors.Red,
+                Colors.Orange,
+                Colors.Yellow,
+                Colors.Green,
+                Colors.Blue,
+                Colors.Indigo,
+                Colors.Violet
+            };
+
+            double canvasWidth = RainbowCanvas.Width;
+            double canvasHeight = RainbowCanvas.Height;
+            double stripeHeight = canvasHeight / rainbowColors.Length;
+
+            // Tạo các hình chữ nhật có hiệu ứng mờ dần
+            for (int i = 0; i < rainbowColors.Length; i++)
+            {
+                var rect = new System.Windows.Shapes.Rectangle
+                {
+                    Fill = new SolidColorBrush(rainbowColors[i]),
+                    Width = canvasWidth,
+                    Height = stripeHeight,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(0, i * stripeHeight, 0, 0),
+                    Opacity = 1.0 // Bắt đầu với độ mờ 100%
+                };
+
+                // Thêm hiệu ứng mờ dần
+                var fadeOutAnimation = new DoubleAnimation(1.0, 0.0, TimeSpan.FromSeconds(4)); // Mờ dần trong 4 giây
+                fadeOutAnimation.BeginTime = TimeSpan.FromSeconds(0); // Bắt đầu ngay lập tức
+                fadeOutAnimation.Completed += (s, e) =>
+                {
+                    // Ẩn Popup sau khi animation hoàn tất
+                    RainbowPopup.IsOpen = false;
+                };
+
+                rect.BeginAnimation(System.Windows.Shapes.Rectangle.OpacityProperty, fadeOutAnimation);
+
+                RainbowCanvas.Children.Add(rect);
+            }
+
+            // Hiển thị Popup
+            RainbowPopup.IsOpen = true;
         }
         private async void CheckForUpdates_Click(object sender, RoutedEventArgs e)
         {
@@ -1908,6 +2023,27 @@ namespace TodoListApp
             var input = SearchTextBox.Text.Trim();
             _currentSearchTerm = input; // Lưu lại từ khóa tìm kiếm
 
+            if (TodoListApp.EasterEgg.EasterEggHandler.ProcessEasterEggTAMKHOA(input)) // Thêm namespace nếu cần
+            {
+                StatusText.Text = "Bạn đã tìm thấy Easter Egg! Đang có một điều bất ngờ dành cho bạn!!...";
+                return;
+            }
+            // Thêm các Easter Egg khác có thể được kích hoạt bằng cách gõ từ khóa
+            if (TodoListApp.EasterEgg.EasterEggHandler.ProcessSpeedMode(input)) // Thêm namespace nếu cần
+            {
+                StatusText.Text = $"Chế độ tốc độ {(TodoListApp.EasterEgg.EasterEggHandler.IsSpeedModeActive() ? "đã BẬT" : "đã TẮT")}!";
+                return; // Thoát để không thực hiện tìm kiếm
+            }
+            if (TodoListApp.EasterEgg.EasterEggHandler.ProcessUltraDarkMode(input)) // Thêm namespace nếu cần
+            {
+                StatusText.Text = $"Chế độ bóng tối cực sâu {(TodoListApp.EasterEgg.EasterEggHandler.IsUltraDarkModeActive() ? "đã BẬT" : "đã TẮT")}!";
+                // GỌI HÀM ÁP DỤNG THEME Ở ĐÂY
+                ApplyEasterEggTheme();
+
+                UpdateSearchTextBoxStyle();
+                return; // Thoát để không thực hiện tìm kiếm
+            }
+
             // Nếu ô tìm kiếm trống, reset các bộ lọc khác
             if (string.IsNullOrEmpty(input))
             {
@@ -1926,6 +2062,46 @@ namespace TodoListApp
             }
             StatusText.Text = $"Tìm kiếm: '{input}'";
             UpdateViewsWithFilters();
+        }
+        // Trong MainWindow.xaml.cs
+        private void UpdateSearchTextBoxStyle()
+        {
+            if (TodoListApp.EasterEgg.EasterEggHandler.IsUltraDarkModeActive())
+            {
+                // Chuyển toàn bộ giao diện sang màu đen
+                this.Background = new SolidColorBrush(Color.FromRgb(0, 0, 0));
+                // Highlight SearchTextBox
+                SearchTextBox.Background = new SolidColorBrush(Color.FromRgb(0, 0, 0)); // Nền đen
+                SearchTextBox.Foreground = new SolidColorBrush(Color.FromRgb(255, 0, 0)); // Chữ đỏ
+                                                                                          // Có thể thay đổi màu sắc cho các phần tử khác nếu cần
+            }
+            else
+            {
+                // Trở lại theme mặc định
+                ApplyMahAppsTheme(Properties.Settings.Default.IsDarkMode);
+                // Reset SearchTextBox
+                SearchTextBox.Background = Brushes.Transparent;
+                SearchTextBox.Foreground = (Brush)Resources["NormalTextBrush"]; // Hoặc màu mặc định
+            }
+        }
+        // Trong MainWindow.xaml.cs
+        private void ApplyEasterEggTheme()
+        {
+            var bgBrush = TodoListApp.EasterEgg.EasterEggHandler.GetWindowBackgroundBrush();
+            if (bgBrush != null)
+            {
+                this.Background = bgBrush;
+                LeftInputPanel.Background = bgBrush;
+            }
+            else
+            {
+                // Trở lại theme mặc định nếu không có hiệu ứng nào
+                ApplyMahAppsTheme(Properties.Settings.Default.IsDarkMode);
+                SearchTextBox.Background = Brushes.Transparent;
+                SearchTextBox.Foreground = (Brush)Resources["NormalTextBrush"];
+                LeftInputPanel.Background = new SolidColorBrush(Color.FromRgb(0xF5, 0xF5, 0xF5));
+            }
+            UpdateSearchTextBoxStyle();
         }
         private bool IsTaskMatch(TodoTask task, string searchTerm, int? priorityFilter, string deadlineRangeFilter)
         {

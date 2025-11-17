@@ -208,12 +208,28 @@
         </DataTemplate>
     </Window.Resources>
 
-    <Grid>
+    <Grid MouseLeftButtonUp="MainWindowGrid_MouseLeftButtonUp">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+
+        <Popup x:Name="RainbowPopup" Placement="Center" StaysOpen="False" AllowsTransparency="True">
+            <Canvas x:Name="RainbowCanvas" Width="400" Height="200" Background="Transparent">
+            </Canvas>
+        </Popup>
+
+        <TextBlock x:Name="TreasureClickCounterTextBlock"
+                   Grid.Row="2" 
+                   HorizontalAlignment="Right" 
+                   VerticalAlignment="Bottom"
+                   Margin="0,0,10,5" 
+                   FontSize="12" 
+                   FontWeight="SemiBold"
+                   Foreground="Black" 
+                   Background="Transparent" 
+                   Panel.ZIndex="1000" />
 
         <Border Grid.Row="0" Background="#FF2196F3" Padding="14" BorderBrush="Black" BorderThickness="0,0,0,1">
             <Grid>
@@ -237,7 +253,7 @@
                 <ColumnDefinition Width="75*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="#F5F5F5" Padding="16" BorderBrush="Black" BorderThickness="1">
+            <Border x:Name="LeftInputPanel" Grid.Column="0" Background="#F5F5F5" Padding="16" BorderBrush="Black" BorderThickness="1">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
                         <TextBlock Text="➕ Thêm công việc mới" FontSize="16" FontWeight="Bold" Margin="0,0,0,15"/>
